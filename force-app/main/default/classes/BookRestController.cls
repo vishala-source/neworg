@@ -10,6 +10,6 @@ public without sharing class BookRestController {
             System.debug('=== ERROR: ' + e.getMessage());
             return new List<Book__c>(); // Return empty list instead of throwing an error
         }
-        // changes added
+        // changes added to the book object
     }
 }
