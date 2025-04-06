@@ -60,7 +60,7 @@ jobs:
       # Step 7: Logout from Salesforce
       - name: Logout from Salesforce
         run: |
-          sf org logout --target-org ${{ secrets.SF_USER_NAME }} --no-prompt
+          sf org logout --target-org ${{ secrets.SF_USERNAME }} --no-prompt
 
       # Step 8: Print Success Message
       - name: Deployment Successful
