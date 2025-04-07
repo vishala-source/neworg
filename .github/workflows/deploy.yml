@@ -44,7 +44,7 @@ jobs:
             echo "Using PRODUCTION credentials"
             echo "DEPLOY_CONSUMER_KEY=${{ secrets.PROD_CLIENT_ID }}" >> $GITHUB_ENV
             echo "DEPLOY_USERNAME=${{ secrets.PROD_USERNAME }}" >> $GITHUB_ENV
-            echo "DEPLOY_LOGIN_URL=${{ secrets.PROD_LOGIN_URL }}" >> $GITHUB_ENV
+            echo "DEPLOY_LOGIN_URL=${{ vars.PROD_LOGIN_URL }}" >> $GITHUB_ENV
             echo "${{ secrets.PROD_JWT_KEY }}" > server.key
           fi
 
