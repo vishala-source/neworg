@@ -28,7 +28,7 @@ public without sharing class LoanUpdateController {
             System.debug('=== ERROR: ' + e.getMessage());
             throw new AuraHandledException('Error fetching loans: ' + e.getMessage());
         }
-        // Loan upddate to the main branch
+        // Loan upddate to the main branch to production branch
         return loans;
     }
 }
