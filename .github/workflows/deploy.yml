@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - production
+      - Production
     paths:
       - 'force-app/main/default/**'
   workflow_dispatch:
