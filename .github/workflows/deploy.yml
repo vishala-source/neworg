@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-      - Production
+      - production
     paths:
       - 'force-app/main/default/**'
   workflow_dispatch:
@@ -28,23 +28,33 @@ jobs:
 
       # Step 3: Install Salesforce CLI
       - name: Install Salesforce CLI
-        run: |
-          npm install --global @salesforce/cli
+        run: npm install --global @salesforce/cli
 
       # Step 4: Set environment variables + write key to file
       - name: Set Environment Variables
         run: |
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY }}" >> $GITHUB_ENV
-            echo "SF_USERNAME=${{ secrets.SF_USERNAME }}" >> $GITHUB_ENV
-            echo "LOGIN_URL=${{ vars.INSTANCE_URL }}" >> $GITHUB_ENV
-            echo "${{ secrets.SF_PRIVATE_KEY }}" > server.key
-          elif [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
-            echo "SF_CONSUMER_KEY=${{ secrets.PROD_CLIENT_ID }}" >> $GITHUB_ENV
-            echo "SF_USERNAME=${{ secrets.PROD_USERNAME }}" >> $GITHUB_ENV
-            echo "LOGIN_URL=${{ secrets.PROD_LOGIN_URL }}" >> $GITHUB_ENV
-            echo "${{ secrets.PROD_JWT_KEY }}" > server.key
+          if [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "Using MAIN org credentials"
+            echo "SF_CONSUMER_KEY=${SF_CONSUMER_KEY}" >> $GITHUB_ENV
+            echo "SF_USERNAME=${SF_USERNAME}" >> $GITHUB_ENV
+            echo "LOGIN_URL=${INSTANCE_URL}" >> $GITHUB_ENV
+            echo "$SF_PRIVATE_KEY" > server.key
+          elif [[ "${GITHUB_REF}" == "refs/heads/production" ]]; then
+            echo "Using PROD org credentials"
+            echo "SF_CONSUMER_KEY=${PROD_CLIENT_ID}" >> $GITHUB_ENV
+            echo "SF_USERNAME=${PROD_USERNAME}" >> $GITHUB_ENV
+            echo "LOGIN_URL=${PROD_LOGIN_URL}" >> $GITHUB_ENV
+            echo "$PROD_JWT_KEY" > server.key
           fi
+        env:
+          SF_CONSUMER_KEY: ${{ secrets.SF_CONSUMER_KEY }}
+          SF_USERNAME: ${{ secrets.SF_USERNAME }}
+          INSTANCE_URL: ${{ vars.INSTANCE_URL }}
+          SF_PRIVATE_KEY: ${{ secrets.SF_PRIVATE_KEY }}
+          PROD_CLIENT_ID: ${{ secrets.PROD_CLIENT_ID }}
+          PROD_USERNAME: ${{ secrets.PROD_USERNAME }}
+          PROD_LOGIN_URL: ${{ secrets.PROD_LOGIN_URL }}
+          PROD_JWT_KEY: ${{ secrets.PROD_JWT_KEY }}
 
       # Step 5: Authenticate with Salesforce using JWT
       - name: Authenticate with Salesforce
@@ -77,8 +87,7 @@ jobs:
 
       # Step 8: Logout from Salesforce
       - name: Logout from Salesforce
-        run: |
-          sf org logout --target-org production-org --no-prompt
+        run: sf org logout --target-org production-org --no-prompt
 
       # Step 9: Success message
       - name: Deployment Successful
