@@ -10,7 +10,93 @@ on:
   workflow_dispatch:
 
 jobs:
+  deploy:name: Deploy Changed Files to Salesforce
+
+on:
+  push:
+    branches:
+      - main
+      - Production
+    paths:
+      - 'force-app/main/default/**'
+  workflow_dispatch:
+
+jobs:
   deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Step 2: Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      # Step 3: Install Salesforce CLI
+      - name: Install Salesforce CLI
+        run: npm install --global @salesforce/cli
+
+      # Step 4: Set environment variables + write key to file
+      - name: Set Environment Variables
+        run: |
+          echo "Current branch: $GITHUB_REF_NAME"
+          if [[ "$GITHUB_REF_NAME" == "main" ]]; then
+            echo "Using SANDBOX credentials"
+            echo "DEPLOY_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY }}" >> $GITHUB_ENV
+            echo "DEPLOY_USERNAME=${{ secrets.SF_USERNAME }}" >> $GITHUB_ENV
+            echo "DEPLOY_LOGIN_URL=${{ vars.INSTANCE_URL }}" >> $GITHUB_ENV
+            echo "${{ secrets.SF_PRIVATE_KEY }}" > server.key
+          elif [[ "$GITHUB_REF_NAME" == "Production" ]]; then
+            echo "Using PRODUCTION credentials"
+            echo "DEPLOY_CONSUMER_KEY=${{ secrets.PROD_CLIENT_ID }}" >> $GITHUB_ENV
+            echo "DEPLOY_USERNAME=${{ secrets.PROD_USERNAME }}" >> $GITHUB_ENV
+            echo "DEPLOY_LOGIN_URL=${{ secrets.PROD_LOGIN_URL }}" >> $GITHUB_ENV
+            echo "${{ secrets.PROD_JWT_KEY }}" > server.key
+          fi
+
+      # Step 5: Authenticate with Salesforce using JWT
+      - name: Authenticate with Salesforce
+        run: |
+          sf org login jwt \
+            --client-id $DEPLOY_CONSUMER_KEY \
+            --jwt-key-file server.key \
+            --username $DEPLOY_USERNAME \
+            --instance-url $DEPLOY_LOGIN_URL \
+            --set-default \
+            --alias production-org
+
+      # Step 6: Identify changed files
+      - name: Identify changed files
+        id: changed_files
+        run: |
+          git diff --name-only HEAD~1 > changed_files.txt || echo "No changes found"
+          cat changed_files.txt
+
+      # Step 7: Deploy changed files
+      - name: Deploy changed files to Salesforce
+        if: success()
+        run: |
+          while IFS= read -r file; do
+            if [[ -f "$file" ]]; then
+              echo "Deploying: $file"
+              sf project deploy start --source-dir "$file" --target-org production-org
+            fi
+          done < changed_files.txt
+
+      # Step 8: Logout from Salesforce
+      - name: Logout from Salesforce
+        run: sf org logout --target-org production-org --no-prompt
+
+      # Step 9: Success message
+      - name: Deployment Successful
+        run: echo "✅ Deployment to Salesforce completed successfully!"
+
     runs-on: ubuntu-latest
 
     steps:
