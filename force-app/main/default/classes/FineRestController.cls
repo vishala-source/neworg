@@ -28,7 +28,7 @@ public without sharing class FineRestController {
                 WHERE Loan__c IN :loans
             ];
 
-            // changes made
+            // changes made to fine object
 
         } catch (Exception e) {
             System.debug('=== ERROR: ' + e.getMessage());
