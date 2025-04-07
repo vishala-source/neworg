@@ -28,8 +28,11 @@ public without sharing class LoanUpdateController {
             System.debug('=== ERROR: ' + e.getMessage());
             throw new AuraHandledException('Error fetching loans: ' + e.getMessage());
         }
-        // added New version of Loanupdatecontroller
-
+// loan added to the Line for test git
         return loans;
     }
 }
+
+
+
+    
