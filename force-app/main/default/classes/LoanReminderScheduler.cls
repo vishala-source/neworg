@@ -30,7 +30,7 @@ global class LoanReminderScheduler implements Schedulable {
                 emailMessages.add(email);
             }
 
-            // Sending all emails
+            // Sending all emails for getting notification
             if (!emailMessages.isEmpty()) {
                 Messaging.sendEmail(emailMessages);
             }
