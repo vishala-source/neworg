@@ -3,24 +3,24 @@ name: Deploy Changed Files to Salesforce
 on:
   push:
     branches:
-      - main        # Deploy to Sandbox
-      - production  # Deploy to Production
+      - main
+      - production
     paths:
-      - 'force-app/main/default/**'  # Triggers only if files inside this folder change
-  workflow_dispatch:  # Allows manual trigger
+      - 'force-app/main/default/**'
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Checkout repository with full history
+      # Step 1: Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # Ensures full commit history is available
+          fetch-depth: 0
 
-      # Step 2: Set up Node.js (if required for Salesforce CLI)
+      # Step 2: Set up Node.js
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
@@ -31,25 +31,24 @@ jobs:
         run: |
           npm install --global @salesforce/cli
 
-      # ✅ Step 4: Set environment variables based on branch
+      # Step 4: Set environment variables + write key to file
       - name: Set Environment Variables
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             echo "SF_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY }}" >> $GITHUB_ENV
             echo "SF_USERNAME=${{ secrets.SF_USERNAME }}" >> $GITHUB_ENV
-            echo "JWT_KEY=${{ secrets.SF_PRIVATE_KEY }}" >> $GITHUB_ENV
             echo "LOGIN_URL=${{ vars.INSTANCE_URL }}" >> $GITHUB_ENV
+            echo "${{ secrets.SF_PRIVATE_KEY }}" > server.key
           elif [[ "${{ github.ref }}" == "refs/heads/production" ]]; then
             echo "SF_CONSUMER_KEY=${{ secrets.PROD_CLIENT_ID }}" >> $GITHUB_ENV
             echo "SF_USERNAME=${{ secrets.PROD_USERNAME }}" >> $GITHUB_ENV
-            echo "JWT_KEY=${{ secrets.PROD_JWT_KEY }}" >> $GITHUB_ENV
             echo "LOGIN_URL=${{ secrets.PROD_LOGIN_URL }}" >> $GITHUB_ENV
+            echo "${{ secrets.PROD_JWT_KEY }}" > server.key
           fi
 
-      # ✅ Step 5: Authenticate with Salesforce using JWT file
+      # Step 5: Authenticate with Salesforce using JWT
       - name: Authenticate with Salesforce
         run: |
-          echo "${{ env.JWT_KEY }}" > server.key
           sf org login jwt \
             --client-id ${{ env.SF_CONSUMER_KEY }} \
             --jwt-key-file server.key \
@@ -58,14 +57,14 @@ jobs:
             --set-default \
             --alias production-org
 
-      # Step 6: Get the list of changed files
+      # Step 6: Identify changed files
       - name: Identify changed files
         id: changed_files
         run: |
           git diff --name-only HEAD~1 > changed_files.txt || echo "No changes found"
           cat changed_files.txt
 
-      # Step 7: Deploy only changed files
+      # Step 7: Deploy changed files
       - name: Deploy changed files to Salesforce
         if: success()
         run: |
@@ -81,6 +80,6 @@ jobs:
         run: |
           sf org logout --target-org production-org --no-prompt
 
-      # Step 9: Print Success Message
+      # Step 9: Success message
       - name: Deployment Successful
         run: echo "✅ Deployment to Salesforce completed successfully!"
