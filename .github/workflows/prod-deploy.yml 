@@ -1,0 +1,35 @@
+name: Deploy to Production
+
+on:
+  pull_request:
+    branches:
+      - production
+
+jobs:
+  deploy:
+    name: Deploy to Production Org
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Salesforce CLI
+        run: |
+          npm install @salesforce/cli --global
+          sf --version
+
+      - name: Authenticate to Production Org (JWT)
+        run: |
+          echo "${{ secrets.PROD_JWT_KEY }}" > server.key
+          sf org login jwt \
+            --client-id ${{ secrets.PROD_CLIENT_ID }} \
+            --jwt-key-file server.key \
+            --username ${{ secrets.PROD_USERNAME }} \
+            --instance-url ${{ secrets.PROD_LOGIN_URL }} \
+            --set-default \
+            --alias production-org
+
+      - name: Deploy to Production Org
+        run: |
+          sf project deploy start --target-org production-org --ignore-conflicts --wait 10
