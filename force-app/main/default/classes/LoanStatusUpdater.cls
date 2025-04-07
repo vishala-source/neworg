@@ -10,7 +10,7 @@ global class LoanStatusUpdater implements Schedulable {
             FROM Loan__c 
             WHERE Return_Date__c < TODAY AND Loan_Status__c = 'Borrowed'
         ];
-        // changes added to loan to lms
+        // changes added to the loan onject in lms
 
         if (!overdueLoans.isEmpty()) {
             for (Loan__c loan : overdueLoans) {
