@@ -2,11 +2,13 @@ name: Deploy to Production
 
 on:
   pull_request:
+    types: [closed]
     branches:
       - production
 
 jobs:
   deploy:
+    if: github.event.pull_request.merged == true
     name: Deploy to Production Org
     runs-on: ubuntu-latest
 
