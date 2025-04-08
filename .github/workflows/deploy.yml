@@ -70,13 +70,13 @@ jobs:
             --output-dir retrieved
           cp -r retrieved/* force-app/main/default/
 
-      # Step 7: Identify changed files
-      - name: Identify changed files
+      # ✅ Step 7: Identify changed metadata files only
+      - name: Identify changed metadata files
         id: changed_files
         if: github.event_name == 'push'
         run: |
-          git diff --name-only HEAD~1 > changed_files.txt
-          cat changed_files.txt || echo "No changes found"
+          git diff --name-only HEAD~1 | grep '^force-app/main/default/' > changed_files.txt || true
+          cat changed_files.txt || echo "No Salesforce metadata changes found"
 
       # Step 8: Deploy changed files
       - name: Deploy changed files to Salesforce
