@@ -3,8 +3,8 @@ name: Deploy Changed Files to Salesforce
 on:
   push:
     branches:
-      - main
-      - Production
+      - main        # Deploy to Sandbox
+      - Production  # Deploy to Production
     paths:
       - 'force-app/main/default/**'
   workflow_dispatch:
@@ -30,10 +30,10 @@ jobs:
       - name: Install Salesforce CLI
         run: npm install --global @salesforce/cli
 
-      # Step 4: Set environment variables + write key to file
+      # Step 4: Set Environment Variables and Write Key File
       - name: Set Environment Variables
         run: |
-          echo "Current branch: $GITHUB_REF_NAME"
+          echo "Branch: $GITHUB_REF_NAME"
           if [[ "$GITHUB_REF_NAME" == "main" ]]; then
             echo "Using SANDBOX credentials"
             echo "DEPLOY_CONSUMER_KEY=${{ secrets.SF_CONSUMER_KEY }}" >> $GITHUB_ENV
@@ -48,7 +48,7 @@ jobs:
             echo "${{ secrets.PROD_JWT_KEY }}" > server.key
           fi
 
-      # Step 5: Authenticate with Salesforce using JWT
+      # Step 5: Authenticate with Salesforce
       - name: Authenticate with Salesforce
         run: |
           sf org login jwt \
@@ -57,30 +57,60 @@ jobs:
             --username $DEPLOY_USERNAME \
             --instance-url $DEPLOY_LOGIN_URL \
             --set-default \
-            --alias production-org
+            --alias target-org
 
-      # Step 6: Identify changed files
+      # Step 6: Retrieve Metadata from Production (manual trigger only)
+      - name: Retrieve Metadata from Production
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/Production'
+        run: |
+          mkdir -p retrieved
+          sf project retrieve start \
+            --target-org target-org \
+            --manifest manifest/package.xml \
+            --output-dir retrieved
+          cp -r retrieved/* force-app/main/default/
+
+      # Step 7: Identify changed files
       - name: Identify changed files
         id: changed_files
+        if: github.event_name == 'push'
         run: |
-          git diff --name-only HEAD~1 > changed_files.txt || echo "No changes found"
-          cat changed_files.txt
+          git diff --name-only HEAD~1 > changed_files.txt
+          cat changed_files.txt || echo "No changes found"
 
-      # Step 7: Deploy changed files
+      # Step 8: Deploy changed files
       - name: Deploy changed files to Salesforce
-        if: success()
+        if: github.event_name == 'push' && success()
         run: |
-          while IFS= read -r file; do
-            if [[ -f "$file" ]]; then
-              echo "Deploying: $file"
-              sf project deploy start --source-dir "$file" --target-org production-org
-            fi
-          done < changed_files.txt
+          if [ -s changed_files.txt ]; then
+            while IFS= read -r file; do
+              if [[ -f "$file" ]]; then
+                echo "Deploying: $file"
+                sf project deploy start --source-dir "$file" --target-org target-org
+              fi
+            done < changed_files.txt
+          else
+            echo "No changed files to deploy."
+          fi
 
-      # Step 8: Logout from Salesforce
+      # Step 9: Commit Retrieved Metadata
+      - name: Commit Retrieved Metadata
+        if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/Production'
+        env:
+          GH_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: |
+          git config --global user.name "vishala-source"
+          git config --global user.email "vishalaharikantra098@gmail.com"
+          git remote set-url origin https://vishala-source:${GITHUB_TOKEN}@github.com/${{ github.repository }}
+          git add force-app/main/default
+          git commit -m "🔄 Synced metadata from Production" || echo "Nothing to commit"
+          git push origin HEAD:Production
+
+      # Step 10: Logout
       - name: Logout from Salesforce
-        run: sf org logout --target-org production-org --no-prompt
+        run: |
+          sf org logout --target-org target-org --no-prompt
 
-      # Step 9: Success message
+      # Step 11: Deployment Success Message
       - name: Deployment Successful
         run: echo "✅ Deployment to Salesforce completed successfully!"
